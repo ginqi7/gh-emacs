@@ -61,13 +61,26 @@ be replaced with the repository name."
           (const :tag "SSH Format" "git@github.com:%s.git")
           (const :tag "HTTPS Format" "https://github.com/%s.git")))
 
+(defcustom gh-debug nil
+  "If logging some intermediate logs.")
 
 ;;; Define Inner Variables:
 (defvar gh--temp-output-file nil "Template file as the command output.")
 
 (defvar-local gh--buffer-comand-name nil "A buffer-local variable for command name.")
 
+(defvar gh--process-success-p t "The success of the GH process")
+
 ;;; Define Inner functions:
+
+(defun gh--notify (name data)
+  (if (not (featurep 'knockknock))
+      (print (format "%s: %s" name data))
+    (knockknock-notify :title name
+                       :icon (if gh--process-success-p
+                                 "cod-check"
+                               "cod-error")
+                       :message data)))
 
 (defun gh--list-get-value (list-name column-name)
   "Get the cell value by LIST-NAME and COLUMN-NAME in GH List."
@@ -122,8 +135,8 @@ be replaced with the repository name."
           (tabulated-list-print)
           (setq-local gh--buffer-comand-name name) ;; Tabulated mode may reset the buffer-local variables, so place this expression at the end.
           (switch-to-buffer (current-buffer))))
-    (print (format "The data of %s is empty." name))))
-
+    (gh--notify name
+                (format "The data is empty." name))))
 
 (defun gh--repo-default-name ()
   "Get git repo default name."
@@ -163,7 +176,7 @@ CALLBACK has two parameters:
   (unless gh--temp-output-file
     (setq gh--temp-output-file (make-temp-file "gh-output-")))
   (let* ((cmd (gh--command-format name args))
-         (log (print cmd))
+         (log (when gh-debug (print cmd)))
          (proc (start-process-shell-command name nil cmd)))
     (set-process-sentinel proc #'gh--process-sentinel)
     (process-put proc 'callback callback)))
@@ -179,6 +192,7 @@ CALLBACK has two parameters:
 PROCESS: The gh process.
 EVENT: describing a change in the state of the `process`"
   (when (member (process-status process) '(exit))
+    (setq gh--process-success-p (string= "finished" (string-trim event)))
     (when-let* ((callback (process-get process 'callback))
                 (name (process-name process))
                 (data (gh--read-output-file name gh--temp-output-file)))
@@ -221,7 +235,7 @@ DATA: Table data."
                            (gh--repo-default-name))))
     (gh--run "repo-create"
              (append (list "repo" "create" name) args)
-             (lambda (name data) (print data)))))
+             #'gh--notify)))
 
 
 ;;; Define Class:
@@ -328,7 +342,7 @@ DATA: Table data."
     (gh--run "repo edit"
              (append (list "repo" "edit")
                      (reverse args))
-             (lambda (name data) (print data)))))
+             #'gh--notify)))
 
 (defun gh-list-get-view ()
   "View a element in gh list."
@@ -365,7 +379,7 @@ DATA: Table data."
   (interactive)
   (gh--run "issue-close"
            (list "issue" "close" (gh--list-get-value "issue-list" "number"))
-           (lambda (name data) (print data))))
+           #'gh--notify))
 
 (defun gh-issue-list-get-view ()
   "View a issue in the gh list."
@@ -376,7 +390,8 @@ DATA: Table data."
   "Copy a repository URL in the gh list."
   (interactive)
   (let ((url (format gh-clone-url-format (gh--list-get-value "repo-list" "nameWithOwner"))))
-    (print (format "Copy %s" url))
+    (gh--notify gh--buffer-comand-name
+                (format "Copy %s" url))
     (kill-new url)))
 
 (defun gh-issue-list-copy-url ()
@@ -385,7 +400,8 @@ DATA: Table data."
   (let ((url (format "https://github.com/%s/issues/%s"
                      (gh--repo-default-name)
                      (gh--list-get-value "issue-list" "number"))))
-    (print (format "Copy %s" url))
+    (gh--notify gh--buffer-comand-name
+                (format "Copy %s" url))
     (kill-new url)))
 
 (defun gh-repo-list-browse-url ()
@@ -444,7 +460,7 @@ DATA: Table data."
         (gh--run "issue-create"
                  (append '("issue" "create")
                          args)
-                 (lambda (name data) (print data)))))))
+                 #'gh--notify)))))
 
 (defun gh-issue-list ()
   "Show the Github issue list."
