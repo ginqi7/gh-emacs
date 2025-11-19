@@ -99,27 +99,30 @@ be replaced with the repository name."
 
 (defun gh--list-render (name data)
   "Render the NAME and hash DATA as tabulated-list."
-  (with-current-buffer (get-buffer-create "*gh-list*")
-    (let* ((header (plist-get gh-json-headers name #'equal))
-           (header-widths (gh--header-widths header data)))
-      (gh-list-mode)
-      (setq tabulated-list-format
-            (vconcat (mapcar
-                      (lambda (item)
-                        (list item (gethash item header-widths) t))
-                      header)))
-      (tabulated-list-init-header)
-      (setq tabulated-list-entries
-            (mapcar (lambda (row)
-                      (list (gethash (car header)  row)
-                            (vconcat (mapcar
-                                      (lambda (key)
-                                        (format "%s" (gethash key row)))
-                                      header))))
-                    data))
-      (tabulated-list-print)
-      (setq-local gh--buffer-comand-name name) ;; Tabulated mode may reset the buffer-local variables, so place this expression at the end.
-      (switch-to-buffer (current-buffer)))))
+  (if (and data
+           (not (zerop (length data))))
+      (with-current-buffer (get-buffer-create "*gh-list*")
+        (let* ((header (plist-get gh-json-headers name #'equal))
+               (header-widths (gh--header-widths header data)))
+          (gh-list-mode)
+          (setq tabulated-list-format
+                (vconcat (mapcar
+                          (lambda (item)
+                            (list item (gethash item header-widths) t))
+                          header)))
+          (tabulated-list-init-header)
+          (setq tabulated-list-entries
+                (mapcar (lambda (row)
+                          (list (gethash (car header)  row)
+                                (vconcat (mapcar
+                                          (lambda (key)
+                                            (format "%s" (gethash key row)))
+                                          header))))
+                        data))
+          (tabulated-list-print)
+          (setq-local gh--buffer-comand-name name) ;; Tabulated mode may reset the buffer-local variables, so place this expression at the end.
+          (switch-to-buffer (current-buffer))))
+    (print (format "The data of %s is empty." name))))
 
 
 (defun gh--repo-default-name ()
