@@ -336,6 +336,12 @@ DATA: Table data."
   (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-copy-url))
         ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-copy-url))))
 
+(defun gh-list-browse-url ()
+  "Browse a URL in gh list."
+  (interactive)
+  (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-browse-url))
+        ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-browse-url))))
+
 (defun gh-repo-list-get-view ()
   "View a repository in the gh list."
   (interactive)
@@ -361,6 +367,20 @@ DATA: Table data."
                      (gh--list-get-value "issue-list" "number"))))
     (print (format "Copy %s" url))
     (kill-new url)))
+
+(defun gh-repo-list-browse-url ()
+  "Browse a repository URL in the gh list."
+  (interactive)
+  (let ((url (format "https://github.com/%s" (gh--list-get-value "repo-list" "nameWithOwner"))))
+    (browse-url url)))
+
+(defun gh-issue-list-browse-url ()
+  "Browse a issue URL in the gh list."
+  (interactive)
+  (let ((url (format "https://github.com/%s/issues/%s"
+                     (gh--repo-default-name)
+                     (gh--list-get-value "issue-list" "number"))))
+    (browse-url url)))
 
 (defun gh-issue-create ()
   "Create a Github issue buffer."
@@ -425,7 +445,9 @@ DATA: Table data."
 (define-derived-mode gh-list-mode tabulated-list-mode "gh-list"
   "A minor list mode about the gh."
   (keymap-set gh-list-mode-map "RET" 'gh-list-get-view)
-  (keymap-set gh-list-mode-map "c" 'gh-list-copy-url))
+  (keymap-set gh-list-mode-map "c" 'gh-list-copy-url)
+  (keymap-set gh-list-mode-map "o" 'gh-list-browse-url))
+
 
 (provide 'gh)
 ;;; gh.el ends here
