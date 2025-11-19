@@ -342,6 +342,13 @@ DATA: Table data."
   (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-copy-url))
         ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-copy-url))))
 
+(defun gh-list-close ()
+  "Close a element in gh list."
+  (interactive)
+  (cond ((equal gh--buffer-comand-name "repo-list") nil)
+        ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-close))))
+
+
 (defun gh-list-browse-url ()
   "Browse a URL in gh list."
   (interactive)
@@ -352,6 +359,13 @@ DATA: Table data."
   "View a repository in the gh list."
   (interactive)
   (gh-repo-view (gh--list-get-value "repo-list" "nameWithOwner")))
+
+(defun gh-issue-list-close ()
+  "Close a issue in the gh list."
+  (interactive)
+  (gh--run "issue-close"
+           (list "issue" "close" (gh--list-get-value "issue-list" "number"))
+           (lambda (name data) (print data))))
 
 (defun gh-issue-list-get-view ()
   "View a issue in the gh list."
@@ -454,6 +468,7 @@ DATA: Table data."
   "A minor list mode about the gh."
   (keymap-set gh-list-mode-map "RET" 'gh-list-get-view)
   (keymap-set gh-list-mode-map "c" 'gh-list-copy-url)
+  (keymap-set gh-list-mode-map "C" 'gh-list-close)
   (keymap-set gh-list-mode-map "o" 'gh-list-browse-url))
 
 
