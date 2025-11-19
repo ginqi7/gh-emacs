@@ -132,7 +132,7 @@ be replaced with the repository name."
 
 (defun gh--command-format (name args)
   "Combine the command string with the NAME and ARGS."
-  (format "gh %s %s %s > %s"
+  (format "gh %s %s %s &> %s"
           (string-join args " ")
           (gh--json-header-format name)
           (gh--jq-exp-format name)
@@ -163,14 +163,16 @@ CALLBACK has two parameters:
   (unless gh--temp-output-file
     (setq gh--temp-output-file (make-temp-file "gh-output-")))
   (let* ((cmd (gh--command-format name args))
+         (log (print cmd))
          (proc (start-process-shell-command name nil cmd)))
     (set-process-sentinel proc #'gh--process-sentinel)
     (process-put proc 'callback callback)))
 
 (defun gh--clear-file-contents (file-path)
   "Clear the contents of the file at FILE-PATH."
-  (with-temp-buffer
-    (write-region "" nil file-path)))
+  (let ((inhibit-message t))  ; Temporarily inhibit messages
+    (with-temp-buffer
+      (write-region "" nil file-path))))
 
 (defun gh--process-sentinel (process event)
   "The sentinel about gh process.
@@ -178,9 +180,10 @@ PROCESS: The gh process.
 EVENT: describing a change in the state of the `process`"
   (when (member (process-status process) '(exit))
     (when-let* ((callback (process-get process 'callback))
-                (name (process-name process)))
-      (funcall callback name (gh--read-output-file name gh--temp-output-file)))
-    (gh--clear-file-contents gh--temp-output-file)))
+                (name (process-name process))
+                (data (gh--read-output-file name gh--temp-output-file)))
+      (gh--clear-file-contents gh--temp-output-file)
+      (funcall callback name data))))
 
 (defun gh--read-output-file (name file)
   "Read the contents of FILE.
