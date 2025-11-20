@@ -80,7 +80,9 @@ be replaced with the repository name."
                        :icon (if gh--process-success-p
                                  "cod-check"
                                "cod-error")
-                       :message data)))
+                       :message data)
+    (unless gh--process-success-p
+      (print (format "%s: %s" name data)))))
 
 (defun gh--list-get-value (list-name column-name)
   "Get the cell value by LIST-NAME and COLUMN-NAME in GH List."
@@ -112,31 +114,33 @@ be replaced with the repository name."
 
 (defun gh--list-render (name data)
   "Render the NAME and hash DATA as tabulated-list."
-  (if (and data
-           (not (zerop (length data))))
-      (with-current-buffer (get-buffer-create "*gh-list*")
-        (let* ((header (plist-get gh-json-headers name #'equal))
-               (header-widths (gh--header-widths header data)))
-          (gh-list-mode)
-          (setq tabulated-list-format
-                (vconcat (mapcar
-                          (lambda (item)
-                            (list item (gethash item header-widths) t))
-                          header)))
-          (tabulated-list-init-header)
-          (setq tabulated-list-entries
-                (mapcar (lambda (row)
-                          (list (gethash (car header)  row)
-                                (vconcat (mapcar
-                                          (lambda (key)
-                                            (format "%s" (gethash key row)))
-                                          header))))
-                        data))
-          (tabulated-list-print)
-          (setq-local gh--buffer-comand-name name) ;; Tabulated mode may reset the buffer-local variables, so place this expression at the end.
-          (switch-to-buffer (current-buffer))))
-    (gh--notify name
-                (format "The data is empty." name))))
+  (let ((project-default-directory default-directory))
+    (if (and data
+             (not (zerop (length data))))
+        (with-current-buffer (get-buffer-create "*gh-list*")
+          (setq default-directory project-default-directory)
+          (let* ((header (plist-get gh-json-headers name #'equal))
+                 (header-widths (gh--header-widths header data)))
+            (gh-list-mode)
+            (setq tabulated-list-format
+                  (vconcat (mapcar
+                            (lambda (item)
+                              (list item (gethash item header-widths) t))
+                            header)))
+            (tabulated-list-init-header)
+            (setq tabulated-list-entries
+                  (mapcar (lambda (row)
+                            (list (gethash (car header)  row)
+                                  (vconcat (mapcar
+                                            (lambda (key)
+                                              (format "%s" (gethash key row)))
+                                            header))))
+                          data))
+            (tabulated-list-print)
+            (setq-local gh--buffer-comand-name name) ;; Tabulated mode may reset the buffer-local variables, so place this expression at the end.
+            (switch-to-buffer (current-buffer))))
+      (gh--notify name
+                  (format "The data is empty." name)))))
 
 (defun gh--repo-default-name ()
   "Get git repo default name."
@@ -345,7 +349,7 @@ DATA: Table data."
              #'gh--notify)))
 
 (defun gh-list-get-view ()
-  "View a element in gh list."
+  "View an element in gh list."
   (interactive)
   (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-get-view))
         ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-get-view))))
@@ -357,11 +361,16 @@ DATA: Table data."
         ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-copy-url))))
 
 (defun gh-list-close ()
-  "Close a element in gh list."
+  "Close an element in gh list."
   (interactive)
   (cond ((equal gh--buffer-comand-name "repo-list") nil)
         ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-close))))
 
+(defun gh-list-delete ()
+  "Delete an element in gh list."
+  (interactive)
+  (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-delete))
+        ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-delete))))
 
 (defun gh-list-browse-url ()
   "Browse a URL in gh list."
@@ -377,9 +386,34 @@ DATA: Table data."
 (defun gh-issue-list-close ()
   "Close a issue in the gh list."
   (interactive)
-  (gh--run "issue-close"
-           (list "issue" "close" (gh--list-get-value "issue-list" "number"))
-           #'gh--notify))
+  (let ((number (gh--list-get-value "issue-list" "number"))
+        (title (gh--list-get-value "issue-list" "title")))
+    (when (yes-or-no-p
+           (format "Are you sure you want to close the repo: [%s: %s]?" number title))
+      (gh--run "issue-close"
+               (list "issue" "close" number)
+               #'gh--notify))))
+
+(defun gh-repo-list-delete ()
+  "Close a issue in the gh list."
+  (interactive)
+  (let ((name (gh--list-get-value "repo-list" "nameWithOwner")))
+    (when (yes-or-no-p
+           (format "Are you sure you want to delete the repo: [%s]?" name))
+      (gh--run "repo-delete"
+               (list "repo" "delete" name "--yes")
+               #'gh--notify))))
+
+(defun gh-issue-list-delete ()
+  "Close a issue in the gh list."
+  (interactive)
+  (let ((number (gh--list-get-value "issue-list" "number"))
+        (title (gh--list-get-value "issue-list" "title")))
+    (when (yes-or-no-p
+           (format "Are you sure you want to delete the issue: [%s: %s]?" number title))
+      (gh--run "issue-delete"
+               (list "issue" "delete" number "--yes")
+               #'gh--notify))))
 
 (defun gh-issue-list-get-view ()
   "View a issue in the gh list."
@@ -485,7 +519,8 @@ DATA: Table data."
   (keymap-set gh-list-mode-map "RET" 'gh-list-get-view)
   (keymap-set gh-list-mode-map "c" 'gh-list-copy-url)
   (keymap-set gh-list-mode-map "C" 'gh-list-close)
-  (keymap-set gh-list-mode-map "o" 'gh-list-browse-url))
+  (keymap-set gh-list-mode-map "o" 'gh-list-browse-url)
+  (keymap-set gh-list-mode-map "d" 'gh-list-delete))
 
 
 (provide 'gh)
