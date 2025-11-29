@@ -360,10 +360,10 @@ DATA: Table data."
   (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-copy-url))
         ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-copy-url))))
 
-(defun gh-list-close ()
+(defun gh-list-close-or-clone ()
   "Close an element in gh list."
   (interactive)
-  (cond ((equal gh--buffer-comand-name "repo-list") nil)
+  (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-clone))
         ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-close))))
 
 (defun gh-list-delete ()
@@ -394,8 +394,18 @@ DATA: Table data."
                (list "issue" "close" number)
                #'gh--notify))))
 
+(defun gh-repo-list-clone ()
+  "Clone a repo in the gh list."
+  (interactive)
+  (let ((name (gh--list-get-value "repo-list" "nameWithOwner")))
+    (when (yes-or-no-p
+           (format "Are you sure you want to Clone the repo: [%s] to [%s]?" name default-directory))
+      (gh--run "repo-clone"
+               (list "repo" "clone" name)
+               #'gh--notify))))
+
 (defun gh-repo-list-delete ()
-  "Close a issue in the gh list."
+  "Delete a repo in the gh list."
   (interactive)
   (let ((name (gh--list-get-value "repo-list" "nameWithOwner")))
     (when (yes-or-no-p
@@ -518,7 +528,7 @@ DATA: Table data."
   "A minor list mode about the gh."
   (keymap-set gh-list-mode-map "RET" 'gh-list-get-view)
   (keymap-set gh-list-mode-map "c" 'gh-list-copy-url)
-  (keymap-set gh-list-mode-map "C" 'gh-list-close)
+  (keymap-set gh-list-mode-map "C" 'gh-list-close-or-clone)
   (keymap-set gh-list-mode-map "o" 'gh-list-browse-url)
   (keymap-set gh-list-mode-map "d" 'gh-list-delete))
 
