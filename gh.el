@@ -46,7 +46,7 @@
 
 (defcustom gh-jq-exps
   '("issue-list"
-    "[.[] | {number: .number, labels: .labels[0].name, title: .title, updatedAt: .updatedAt}]"
+    "[.[] | {url: .url, number: .number, labels: .labels[0].name, title: .title, updatedAt: .updatedAt}]"
     "my-owned-issue-list"
     "[.[] | {url: .url, repository: .repository.nameWithOwner, number: .number, labels: .labels[0].name, title: .title, updatedAt: .updatedAt}]")
   "JQ expressions for various commands.")
@@ -93,7 +93,7 @@ be replaced with the repository name."
   (aref (tabulated-list-get-entry)
         (cl-position
          column-name
-         (plist-get gh-json-headers list-name #'equal)
+         (cdr (plist-get gh-json-headers list-name #'equal))
          :test #'equal)))
 
 (defun gh--hash-render (name table)
@@ -374,14 +374,14 @@ DATA: Table data."
   (interactive)
   (pcase gh--buffer-comand-name
     ("repo-list" (gh-repo-list-clone))
-    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-close))))
+    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-close gh--buffer-comand-name))))
 
 (defun gh-list-delete ()
   "Delete an element in gh list."
   (interactive)
   (pcase gh--buffer-comand-name
     ("repo-list" (gh-repo-list-delete))
-    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-delete))))
+    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-delete gh--buffer-comand-name))))
 
 (defun gh-list-browse-url ()
   "Browse a URL in gh list."
@@ -395,13 +395,13 @@ DATA: Table data."
   (interactive)
   (gh-repo-view (tabulated-list-get-id)))
 
-(defun gh-issue-list-close ()
+(defun gh-issue-list-close (command-name)
   "Close a issue in the gh list."
   (interactive)
   (let ((url (tabulated-list-get-id))
-        (title (gh--list-get-value "issue-list" "title")))
+        (title (gh--list-get-value command-name "title")))
     (when (yes-or-no-p
-           (format "Are you sure you want to close the repo: [%s: %s]?" url title))
+           (format "Are you sure you want to close the repo: [%s: %s]?" title url))
       (gh--run "issue-close"
                (list "issue" "close" url)
                #'gh--notify))))
@@ -426,13 +426,13 @@ DATA: Table data."
                (list "repo" "delete" name "--yes")
                #'gh--notify))))
 
-(defun gh-issue-list-delete ()
+(defun gh-issue-list-delete (command-name)
   "Close a issue in the gh list."
   (interactive)
   (let ((url (tabulated-list-get-id))
-        (title (gh--list-get-value "issue-list" "title")))
+        (title (gh--list-get-value command-name "title")))
     (when (yes-or-no-p
-           (format "Are you sure you want to delete the issue: [%s: %s]?" url title))
+           (format "Are you sure you want to delete the issue: [%s: %s]?" title url))
       (gh--run "issue-delete"
                (list "issue" "delete" url "--yes")
                #'gh--notify))))
