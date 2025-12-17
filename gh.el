@@ -413,11 +413,7 @@ DATA: Table data."
   (interactive)
   (let ((url (tabulated-list-get-id))
         (title (gh--list-get-value command-name "title")))
-    (when (yes-or-no-p
-           (format "Are you sure you want to close the repo: [%s: %s]?" title url))
-      (gh--run "issue-close"
-               (list "issue" "close" url)
-               #'gh--notify))))
+    (gh-issue-close title url)))
 
 (defun gh-repo-list-clone ()
   "Clone a repo in the gh list."
@@ -542,6 +538,23 @@ DATA: Table data."
            '("issue" "list")
            (lambda (name data)
              (gh--completing-read name data "title" callback))))
+
+(defun gh-issue-close (title url)
+  "Close Github issue by TITLE and URL."
+  (when (yes-or-no-p
+         (format "Do you close the issue? [%s](%s)" title url))
+    (gh--run "issue-close"
+             (list "issue" "close" url)
+             #'gh--notify)))
+
+(defun gh-issue-close-interactive ()
+  "Close Github issue interactively."
+  (interactive)
+  (gh-issue-list-completing-read
+   (lambda (data)
+     (gh-issue-close
+      (gethash "title" data)
+      (gethash "url" data)))))
 
 (defun gh-issue-my-owned-list ()
   "Show the my owned Github issue list."
