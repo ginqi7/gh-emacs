@@ -35,16 +35,20 @@
 
 (defcustom gh-json-headers
   '("repo-list"
-    ("nameWithOwner" "description" "updatedAt" "visibility" "isFork")
+    ("nameWithOwner" "name" "description" "updatedAt" "visibility" "isFork")
     "repo-view"
     ("nameWithOwner" "description" "homepageUrl" "updatedAt" "visibility" "isFork")
     "issue-list"
-    ("number" "title" "labels" "updatedAt"))
+    ("url" "number" "title" "labels" "updatedAt")
+    "my-owned-issue-list"
+    ("url" "repository" "number" "title" "labels" "updatedAt"))
   "JSON headers for various commands.")
 
 (defcustom gh-jq-exps
   '("issue-list"
-    "[.[] | {number: .number, labels: .labels[0].name, title: .title, updatedAt: .updatedAt}]")
+    "[.[] | {number: .number, labels: .labels[0].name, title: .title, updatedAt: .updatedAt}]"
+    "my-owned-issue-list"
+    "[.[] | {url: .url, repository: .repository.nameWithOwner, number: .number, labels: .labels[0].name, title: .title, updatedAt: .updatedAt}]")
   "JQ expressions for various commands.")
 
 (defcustom gh-default-limit
@@ -126,7 +130,7 @@ be replaced with the repository name."
                   (vconcat (mapcar
                             (lambda (item)
                               (list item (gethash item header-widths) t))
-                            header)))
+                            (cdr header))))
             (tabulated-list-init-header)
             (setq tabulated-list-entries
                   (mapcar (lambda (row)
@@ -134,7 +138,7 @@ be replaced with the repository name."
                                   (vconcat (mapcar
                                             (lambda (key)
                                               (format "%s" (gethash key row)))
-                                            header))))
+                                            (cdr header)))))
                           data))
             (tabulated-list-print)
             (setq-local gh--buffer-comand-name name) ;; Tabulated mode may reset the buffer-local variables, so place this expression at the end.
@@ -223,7 +227,10 @@ DATA: Table data."
        (mapc
         (lambda (key)
           (unless (gethash key hash-widths)
-            (puthash key (length (format "%s" (gethash key row))) hash-widths))
+            (puthash key (max
+                          (length key)
+                          (length (format "%s" (gethash key row))))
+                     hash-widths))
           (puthash key (max
                         (length (format "%s" (gethash key row)))
                         (gethash key hash-widths))
@@ -351,47 +358,52 @@ DATA: Table data."
 (defun gh-list-get-view ()
   "View an element in gh list."
   (interactive)
-  (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-get-view))
-        ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-get-view))))
+  (pcase gh--buffer-comand-name
+    ("repo-list" (gh-repo-list-get-view))
+    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-get-view))))
 
 (defun gh-list-copy-url ()
   "Copy a URL in gh list."
   (interactive)
-  (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-copy-url))
-        ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-copy-url))))
+  (pcase gh--buffer-comand-name
+    ("repo-list" (gh-repo-list-copy-url))
+    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-copy-url))))
 
 (defun gh-list-close-or-clone ()
   "Close an element in gh list."
   (interactive)
-  (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-clone))
-        ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-close))))
+  (pcase gh--buffer-comand-name
+    ("repo-list" (gh-repo-list-clone))
+    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-close))))
 
 (defun gh-list-delete ()
   "Delete an element in gh list."
   (interactive)
-  (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-delete))
-        ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-delete))))
+  (pcase gh--buffer-comand-name
+    ("repo-list" (gh-repo-list-delete))
+    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-delete))))
 
 (defun gh-list-browse-url ()
   "Browse a URL in gh list."
   (interactive)
-  (cond ((equal gh--buffer-comand-name "repo-list") (gh-repo-list-browse-url))
-        ((equal gh--buffer-comand-name "issue-list") (gh-issue-list-browse-url))))
+  (pcase gh--buffer-comand-name
+    ("repo-list" (gh-repo-list-browse-url))
+    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-browse-url))))
 
 (defun gh-repo-list-get-view ()
   "View a repository in the gh list."
   (interactive)
-  (gh-repo-view (gh--list-get-value "repo-list" "nameWithOwner")))
+  (gh-repo-view (tabulated-list-get-id)))
 
 (defun gh-issue-list-close ()
   "Close a issue in the gh list."
   (interactive)
-  (let ((number (gh--list-get-value "issue-list" "number"))
+  (let ((url (tabulated-list-get-id))
         (title (gh--list-get-value "issue-list" "title")))
     (when (yes-or-no-p
-           (format "Are you sure you want to close the repo: [%s: %s]?" number title))
+           (format "Are you sure you want to close the repo: [%s: %s]?" url title))
       (gh--run "issue-close"
-               (list "issue" "close" number)
+               (list "issue" "close" url)
                #'gh--notify))))
 
 (defun gh-repo-list-clone ()
@@ -407,7 +419,7 @@ DATA: Table data."
 (defun gh-repo-list-delete ()
   "Delete a repo in the gh list."
   (interactive)
-  (let ((name (gh--list-get-value "repo-list" "nameWithOwner")))
+  (let ((name (tabulated-list-get-id)))
     (when (yes-or-no-p
            (format "Are you sure you want to delete the repo: [%s]?" name))
       (gh--run "repo-delete"
@@ -417,18 +429,18 @@ DATA: Table data."
 (defun gh-issue-list-delete ()
   "Close a issue in the gh list."
   (interactive)
-  (let ((number (gh--list-get-value "issue-list" "number"))
+  (let ((url (tabulated-list-get-id))
         (title (gh--list-get-value "issue-list" "title")))
     (when (yes-or-no-p
-           (format "Are you sure you want to delete the issue: [%s: %s]?" number title))
+           (format "Are you sure you want to delete the issue: [%s: %s]?" url title))
       (gh--run "issue-delete"
-               (list "issue" "delete" number "--yes")
+               (list "issue" "delete" url "--yes")
                #'gh--notify))))
 
 (defun gh-issue-list-get-view ()
   "View a issue in the gh list."
   (interactive)
-  (gh-issue-view (gh--list-get-value "issue-list" "number")))
+  (gh-issue-view (tabulated-list-get-id)))
 
 (defun gh-repo-list-copy-url ()
   "Copy a repository URL in the gh list."
@@ -441,9 +453,7 @@ DATA: Table data."
 (defun gh-issue-list-copy-url ()
   "Copy a issue URL in the gh list."
   (interactive)
-  (let ((url (format "https://github.com/%s/issues/%s"
-                     (gh--repo-default-name)
-                     (gh--list-get-value "issue-list" "number"))))
+  (let ((url (tabulated-list-get-id)))
     (gh--notify gh--buffer-comand-name
                 (format "Copy %s" url))
     (kill-new url)))
@@ -451,15 +461,13 @@ DATA: Table data."
 (defun gh-repo-list-browse-url ()
   "Browse a repository URL in the gh list."
   (interactive)
-  (let ((url (format "https://github.com/%s" (gh--list-get-value "repo-list" "nameWithOwner"))))
+  (let ((url (format "https://github.com/%s" (tabulated-list-get-id))))
     (browse-url url)))
 
 (defun gh-issue-list-browse-url ()
   "Browse a issue URL in the gh list."
   (interactive)
-  (let ((url (format "https://github.com/%s/issues/%s"
-                     (gh--repo-default-name)
-                     (gh--list-get-value "issue-list" "number"))))
+  (let ((url (tabulated-list-get-id)))
     (browse-url url)))
 
 (defun gh-issue-create ()
@@ -511,6 +519,13 @@ DATA: Table data."
   (interactive)
   (gh--run "issue-list"
            '("issue" "list")
+           #'gh--list-render))
+
+(defun gh-issue-my-owned-list ()
+  "Show the my owned Github issue list."
+  (interactive)
+  (gh--run "my-owned-issue-list"
+           '("search" "issues" "--assignee" "@me" "--state" "open")
            #'gh--list-render))
 
 (transient-define-prefix gh ()
