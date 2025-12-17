@@ -116,6 +116,19 @@ be replaced with the repository name."
     (insert text)
     (switch-to-buffer (current-buffer))))
 
+(defun gh--completing-read (name data key callback)
+  "Completing read by the NAME, DATA and KEY.
+Run CALLBACK when finished."
+  (let* ((collection (append data nil))
+         (selected (completing-read
+                    (format "[%s]: " name)
+                    (mapcar (lambda (table) (gethash key table))
+                            collection))))
+    (funcall callback
+             (cl-find-if
+              (lambda (item) (string= selected (gethash key item)))
+              collection))))
+
 (defun gh--list-render (name data)
   "Render the NAME and hash DATA as tabulated-list."
   (let ((project-default-directory default-directory))
@@ -520,6 +533,15 @@ DATA: Table data."
   (gh--run "issue-list"
            '("issue" "list")
            #'gh--list-render))
+
+(defun gh-issue-list-completing-read (&optional callback)
+  "Completing read Github issue."
+  (unless callback
+    (setq callback #'print))
+  (gh--run "issue-list"
+           '("issue" "list")
+           (lambda (name data)
+             (gh--completing-read name data "title" callback))))
 
 (defun gh-issue-my-owned-list ()
   "Show the my owned Github issue list."
