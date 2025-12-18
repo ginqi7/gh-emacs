@@ -41,7 +41,12 @@
     "issue-list"
     ("url" "number" "title" "labels" "updatedAt")
     "my-owned-issue-list"
-    ("url" "repository" "number" "title" "labels" "updatedAt"))
+    ("url" "repository" "number" "title" "labels" "updatedAt")
+    "workflow-list"
+    ("id" "name" "state")
+    "workflow-tasks"
+    ("url" "status" "conclusion" "displayTitle" "event"))
+  
   "JSON headers for various commands.")
 
 (defcustom gh-jq-exps
@@ -373,7 +378,8 @@ DATA: Table data."
   (interactive)
   (pcase gh--buffer-comand-name
     ("repo-list" (gh-repo-list-get-view))
-    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-get-view))))
+    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-get-view))
+    ("workflow-list" (gh-workflow-list-get-tasks))))
 
 (defun gh-list-copy-url ()
   "Copy a URL in gh list."
@@ -388,6 +394,19 @@ DATA: Table data."
   (pcase gh--buffer-comand-name
     ("repo-list" (gh-repo-list-clone))
     ((or "issue-list" "my-owned-issue-list") (gh-issue-list-close gh--buffer-comand-name))))
+
+(defun gh-workflow-run ()
+  "Run a workflow"
+  (interactive)
+  (gh--run "workflow-run"
+           (list "workflow" "run" (int-to-string (tabulated-list-get-id)))
+           #'gh--notify))
+
+(defun gh-list-run ()
+  "Run an element in gh list."
+  (interactive)
+  (pcase gh--buffer-comand-name
+    ("workflow-list" (gh-workflow-run))))
 
 (defun gh-list-delete ()
   "Delete an element in gh list."
@@ -450,6 +469,13 @@ DATA: Table data."
   "View a issue in the gh list."
   (interactive)
   (gh-issue-view (tabulated-list-get-id)))
+
+(defun gh-workflow-list-get-tasks ()
+  "View tasks of a workflow in the GitHub list."
+  (interactive)
+  (gh--run "workflow-tasks"
+           (list "run" "list" "--workflow" (int-to-string (tabulated-list-get-id)))
+           #'gh--list-render))
 
 (defun gh-repo-list-copy-url ()
   "Copy a repository URL in the gh list."
@@ -563,6 +589,13 @@ DATA: Table data."
            '("search" "issues" "--assignee" "@me" "--state" "open")
            #'gh--list-render))
 
+(defun gh-workflow-list ()
+  "Show the Github workflow list."
+  (interactive)
+  (gh--run "workflow-list"
+           '("workflow" "list")
+           #'gh--list-render))
+
 (transient-define-prefix gh ()
   "A global menu collects all GitHub comments."
   [["Repo"
@@ -580,7 +613,8 @@ DATA: Table data."
   (keymap-set gh-list-mode-map "c" 'gh-list-copy-url)
   (keymap-set gh-list-mode-map "C" 'gh-list-close-or-clone)
   (keymap-set gh-list-mode-map "o" 'gh-list-browse-url)
-  (keymap-set gh-list-mode-map "d" 'gh-list-delete))
+  (keymap-set gh-list-mode-map "d" 'gh-list-delete)
+  (keymap-set gh-list-mode-map "r" 'gh-list-run))
 
 
 (provide 'gh)
