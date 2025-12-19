@@ -468,9 +468,12 @@ DATA: Table data."
   (interactive)
   (let ((project-default-directory default-directory))
     (with-current-buffer (get-buffer-create "*gh-issue-create*")
-      (setq-local default-directory project-default-directory)
-      (markdown-mode)
       (erase-buffer)
+      (markdown-mode)
+      (gh-edit-mode)
+      ;; Setq-local after the mode is set, as the major mode may reset local variables.
+      (setq-local default-directory project-default-directory)
+      (setq-local gh--buffer-comand-name "issue-create")
       (insert "---\n")
       (insert "title:\n")
       (insert "label:\n")
@@ -478,6 +481,12 @@ DATA: Table data."
       (insert "milestone:\n")
       (insert "---\n")
       (switch-to-buffer (current-buffer)))))
+
+(defun gh-submit()
+  "Submit"
+  (interactive)
+  (pcase gh--buffer-comand-name
+    ("issue-create" (gh-issue-create-submit))))
 
 (defun gh-issue-create-submit ()
   "Submit the create Github issue buffer."
@@ -601,6 +610,15 @@ DATA: Table data."
   "A minor list mode about the gh."
   (keymap-set gh-list-mode-map "RET" 'gh-list-actions))
 
+(define-minor-mode gh-edit-mode
+  "gh Edit mode."
+  :init-value nil
+  :lighter "gh E"
+  :global nil
+  :keymap
+  (let ((map (make-sparse-keymap)))
+    (keymap-set map "C-c C-c" 'gh-submit) 
+    map))
 
 (provide 'gh)
 ;;; gh.el ends here
