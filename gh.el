@@ -373,54 +373,12 @@ DATA: Table data."
                      (reverse args))
              #'gh--notify)))
 
-(defun gh-list-get-view ()
-  "View an element in gh list."
-  (interactive)
-  (pcase gh--buffer-comand-name
-    ("repo-list" (gh-repo-list-get-view))
-    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-get-view))
-    ("workflow-list" (gh-workflow-list-get-tasks))))
-
-(defun gh-list-copy-url ()
-  "Copy a URL in gh list."
-  (interactive)
-  (pcase gh--buffer-comand-name
-    ("repo-list" (gh-repo-list-copy-url))
-    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-copy-url))))
-
-(defun gh-list-close-or-clone ()
-  "Close an element in gh list."
-  (interactive)
-  (pcase gh--buffer-comand-name
-    ("repo-list" (gh-repo-list-clone))
-    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-close gh--buffer-comand-name))))
-
 (defun gh-workflow-run ()
   "Run a workflow"
   (interactive)
   (gh--run "workflow-run"
            (list "workflow" "run" (int-to-string (tabulated-list-get-id)))
            #'gh--notify))
-
-(defun gh-list-run ()
-  "Run an element in gh list."
-  (interactive)
-  (pcase gh--buffer-comand-name
-    ("workflow-list" (gh-workflow-run))))
-
-(defun gh-list-delete ()
-  "Delete an element in gh list."
-  (interactive)
-  (pcase gh--buffer-comand-name
-    ("repo-list" (gh-repo-list-delete))
-    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-delete gh--buffer-comand-name))))
-
-(defun gh-list-browse-url ()
-  "Browse a URL in gh list."
-  (interactive)
-  (pcase gh--buffer-comand-name
-    ("repo-list" (gh-repo-list-browse-url))
-    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-browse-url))))
 
 (defun gh-repo-list-get-view ()
   "View a repository in the gh list."
@@ -437,7 +395,7 @@ DATA: Table data."
 (defun gh-repo-list-clone ()
   "Clone a repo in the gh list."
   (interactive)
-  (let ((name (gh--list-get-value "repo-list" "nameWithOwner")))
+  (let ((name (tabulated-list-get-id)))
     (when (yes-or-no-p
            (format "Are you sure you want to Clone the repo: [%s] to [%s]?" name default-directory))
       (gh--run "repo-clone"
@@ -480,7 +438,7 @@ DATA: Table data."
 (defun gh-repo-list-copy-url ()
   "Copy a repository URL in the gh list."
   (interactive)
-  (let ((url (format gh-clone-url-format (gh--list-get-value "repo-list" "nameWithOwner"))))
+  (let ((url (format gh-clone-url-format (tabulated-list-get-id))))
     (gh--notify gh--buffer-comand-name
                 (format "Copy %s" url))
     (kill-new url)))
@@ -605,16 +563,43 @@ DATA: Table data."
     ("ic" "Create" gh-issue-create)
     ("il" "List" gh-issue-list)]])
 
+(transient-define-prefix gh-workflow-list-actions ()
+  "Actions in workflow-list"
+  ["Actions in workflow-list"
+   ("t" "Tasks" gh-workflow-list-get-tasks)
+   ("r" "Run workflow" gh-workflow-run)])
+
+(transient-define-prefix gh-issue-list-actions ()
+  "Actions in issue-list"
+  ["Actions in issue-list"
+   ("b" "Browse URL" gh-issue-list-browse-url)
+   ("c" "Copy URL" gh-issue-list-copy-url)
+   ("C" "Close Issue" gh-issue-list-close)
+   ("d" "Delete Issue" gh-issue-list-delete)
+   ("v" "View Issue" gh-issue-list-get-view)])
+
+(transient-define-prefix gh-repo-list-actions ()
+  "Actions in repo-list"
+  ["Actions in repo-list"
+   ("b" "Browse URL" gh-repo-list-browse-url)
+   ("c" "Copy URL" gh-repo-list-copy-url)
+   ("C" "Clone Repo" gh-repo-list-clone)
+   ("d" "Delete Repo" gh-repo-list-delete)
+   ("v" "View Repo" gh-repo-list-get-view)])
+
+(defun gh-list-actions ()
+  "Actions in gh list."
+  (interactive)
+  (pcase gh--buffer-comand-name
+    ("repo-list" (gh-repo-list-actions))
+    ((or "issue-list" "my-owned-issue-list") (gh-issue-list-actions))
+    ("workflow-list" (gh-workflow-list-actions))))
+
 
 ;;; Define mode:
 (define-derived-mode gh-list-mode tabulated-list-mode "gh-list"
   "A minor list mode about the gh."
-  (keymap-set gh-list-mode-map "RET" 'gh-list-get-view)
-  (keymap-set gh-list-mode-map "c" 'gh-list-copy-url)
-  (keymap-set gh-list-mode-map "C" 'gh-list-close-or-clone)
-  (keymap-set gh-list-mode-map "o" 'gh-list-browse-url)
-  (keymap-set gh-list-mode-map "d" 'gh-list-delete)
-  (keymap-set gh-list-mode-map "r" 'gh-list-run))
+  (keymap-set gh-list-mode-map "RET" 'gh-list-actions))
 
 
 (provide 'gh)
