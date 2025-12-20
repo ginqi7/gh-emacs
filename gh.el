@@ -385,11 +385,11 @@ DATA: Table data."
   (interactive)
   (gh-repo-view (tabulated-list-get-id)))
 
-(defun gh-issue-list-close (command-name)
+(defun gh-issue-list-close ()
   "Close a issue in the gh list."
   (interactive)
   (let ((url (tabulated-list-get-id))
-        (title (gh--list-get-value command-name "title")))
+        (title (gh--list-get-value gh--buffer-comand-name "title")))
     (gh-issue-close title url)))
 
 (defun gh-repo-list-clone ()
