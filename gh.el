@@ -73,6 +73,11 @@ be replaced with the repository name."
 (defcustom gh-debug nil
   "If logging some intermediate logs.")
 
+(defcustom gh-issue-labels
+  '("bug" "documentation" "duplicate" "enhancement" "good first issue" "help wanted" "invalid" "question" "wontfix")
+  "Variable for issue labels.")
+
+
 ;;; Define Inner Variables:
 (defvar gh--temp-output-file nil "Template file as the command output.")
 
@@ -463,10 +468,24 @@ DATA: Table data."
   (let ((url (tabulated-list-get-id)))
     (browse-url url)))
 
-(defun gh-issue-create ()
+(transient-define-prefix gh-issue-create ()
+  ""
+  ["Arguments"
+   ("l" "Add label" "label=" :reader (lambda (prompt initial-input history)
+                                       (completing-read prompt gh-issue-labels nil t initial-input history)))
+   ("m" "Assignee Me" "assignee=\"@me\"")]
+  [("RET" "Create" gh--issue-create)])
+
+(defun gh--parse-transient (args key)
+  (when-let ((arg (find-if (lambda (arg) (string-prefix-p (concat key "=") arg)) args)))
+    (substring arg (1+ (length key)))))
+
+(defun gh--issue-create (&optional args)
   "Create a Github issue buffer."
-  (interactive)
-  (let ((project-default-directory default-directory))
+  (interactive (list (transient-args 'gh-issue-create)))
+  (let ((assignee (gh--parse-transient args "assignee"))
+        (label (gh--parse-transient args "label"))
+        (project-default-directory default-directory))
     (with-current-buffer (get-buffer-create "*gh-issue-create*")
       (erase-buffer)
       (markdown-mode)
@@ -476,8 +495,8 @@ DATA: Table data."
       (setq-local gh--buffer-comand-name "issue-create")
       (insert "---\n")
       (insert "title:\n")
-      (insert "label:\n")
-      (insert "assignee:\n")
+      (insert (format "label: %s\n" (or label "")))
+      (insert (format "assignee: %s\n" (or assignee "")))
       (insert "milestone:\n")
       (insert "---\n")
       (switch-to-buffer (current-buffer)))))
