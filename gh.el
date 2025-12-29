@@ -3,7 +3,7 @@
 ;; Copyright (C) 2025  Qiqi Jin
 
 ;; Author: Qiqi Jin <ginqi7@gmail.com>
-;; Keywords: 
+;; Keywords:
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -20,13 +20,15 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 
 (require 'yaml)
-(require 'cl)
-
+(require 'cl-seq)
+(require 'eieio)
+(require 'keymap)
+(require 'transient)
 
 ;;; Define Custom Variables:
 
@@ -46,7 +48,6 @@
     ("id" "name" "state")
     "workflow-tasks"
     ("url" "status" "conclusion" "displayTitle" "event"))
-  
   "JSON headers for various commands.")
 
 (defcustom gh-jq-exps
@@ -76,7 +77,6 @@ be replaced with the repository name."
 (defcustom gh-issue-labels
   '("bug" "documentation" "duplicate" "enhancement" "good first issue" "help wanted" "invalid" "question" "wontfix")
   "Variable for issue labels.")
-
 
 ;;; Define Inner Variables:
 (defvar gh--temp-output-file nil "Template file as the command output.")
@@ -271,7 +271,6 @@ DATA: Table data."
              (append (list "repo" "create" name) args)
              #'gh--notify)))
 
-
 ;;; Define Class:
 
 (defclass gh--transient:choices (transient-variable)
@@ -353,7 +352,6 @@ DATA: Table data."
   (gh--run "issue-view"
            (list "issue" "view" number)
            #'gh--text-render))
-
 
 (defun gh-repo-edit ()
   "Edit and Update the Github repository."
@@ -623,7 +621,6 @@ DATA: Table data."
     ((or "issue-list" "my-owned-issue-list") (gh-issue-list-actions))
     ("workflow-list" (gh-workflow-list-actions))))
 
-
 ;;; Define mode:
 (define-derived-mode gh-list-mode tabulated-list-mode "gh-list"
   "A minor list mode about the gh."
@@ -636,9 +633,8 @@ DATA: Table data."
   :global nil
   :keymap
   (let ((map (make-sparse-keymap)))
-    (keymap-set map "C-c C-c" 'gh-submit) 
+    (keymap-set map "C-c C-c" 'gh-submit)
     map))
 
 (provide 'gh)
 ;;; gh.el ends here
-
