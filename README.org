@@ -1,0 +1,80 @@
+#+title: Gh Emacs
+#+author: Qiqi Jin
+#+language: en
+
+#+HTML: <a href ="https://github.com/ginqi7/gh-emacs/blob/master/README.zh-CN.org"><img src="https://img.shields.io/badge/README-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-555555.svg"/></a>
+
+* Overview
+An Emacs Client for Gh.
+
+* Prerequisites
+
+** Dependencies
+- CLI: [[https://cli.github.com/][gh]]
+- Emacs package: [[https://github.com/emacsmirror/yaml][yaml]]
+
+** Install
++ clone the project in your own emacs configuration files directory, like:
+  #+BEGIN_SRC sh
+    git clone https://github.com/emacsmirror/yaml ~/.emacs.d/yaml
+    git clone https://github.com/ginqi7/gh-emacs ~/.emacs.d/lisp/gh;
+  #+END_SRC
+
++ add the path to 'load-path'
+  #+BEGIN_SRC emacs-lisp
+    (add-to-list 'load-path "~/.emacs.d/lisp/yaml")
+    (add-to-list 'load-path "~/.emacs.d/lisp/gh")
+  #+END_SRC
+
+* Configuration
+#+BEGIN_SRC emacs-lisp
+  (require 'gh)
+#+end_src
+
+Here are a few variables that can be used for configuration:
+
+* Variables
+| Name                | Docstring                                                                                                                                                                                                                 |
+|---------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| gh-command          | The command path for gh.                                                                                                                                                                                                  |
+| gh-json-headers     | JSON headers for various commands.                                                                                                                                                                                        |
+| gh-jq-exps          | JQ expressions for various commands.                                                                                                                                                                                      |
+| gh-default-limit    | The default maximum size of the list.                                                                                                                                                                                     |
+| gh-clone-url-format | Format string for cloning a repository from GitHub. You can choose between the SSH format ('git@github.com:%s.git') and the HTTPS format ('https://github.com/%s.git'). The %s will be replaced with the repository name. |
+| gh-debug            | If logging some intermediate logs.                                                                                                                                                                                        |
+| gh-issue-labels     | Variable for issue labels.                                                                                                                                                                                                |
+
+* Interactive Commands
+| Name                       | Docstring                                    |
+|----------------------------+----------------------------------------------|
+| gh--repo-create            | Create a repo by the ARGS.                   |
+| gh-repo-list               | Open the repo list.                          |
+| gh-repo-view               | View a Github repository by NAME.            |
+| gh-issue-view              | View a Github issue by NUMBER.               |
+| gh-repo-edit               | Edit and Update the Github repository.       |
+| gh-workflow-run            | Run a workflow                               |
+| gh-repo-list-get-view      | View a repository in the gh list.            |
+| gh-issue-list-close        | Close a issue in the gh list.                |
+| gh-repo-list-clone         | Clone a repo in the gh list.                 |
+| gh-repo-list-delete        | Delete a repo in the gh list.                |
+| gh-issue-list-delete       | Close a issue in the gh list.                |
+| gh-issue-list-get-view     | View a issue in the gh list.                 |
+| gh-workflow-list-get-tasks | View tasks of a workflow in the GitHub list. |
+| gh-repo-list-copy-url      | Copy a repository URL in the gh list.        |
+| gh-issue-list-copy-url     | Copy a issue URL in the gh list.             |
+| gh-repo-list-browse-url    | Browse a repository URL in the gh list.      |
+| gh-issue-list-browse-url   | Browse a issue URL in the gh list.           |
+| gh--issue-create           | Create a Github issue buffer.                |
+| gh-submit                  | Submit                                       |
+| gh-issue-create-submit     | Submit the create Github issue buffer.       |
+| gh-issue-list              | Show the Github issue list.                  |
+| gh-issue-close-interactive | Close Github issue interactively.            |
+| gh-issue-my-owned-list     | Show the my owned Github issue list.         |
+| gh-workflow-list           | Show the Github workflow list.               |
+| gh-list-actions            | Actions in gh list.                          |
+
+* Features
+
+* Example
+
+* Footnotes
